@@ -2,7 +2,7 @@
 members = [".", "entity"]
 
 [package]
-name = "DrugData"
+name = "drug_data"
 version = "0.1.0"
 edition = "2021"
 
