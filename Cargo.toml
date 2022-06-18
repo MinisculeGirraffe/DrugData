@@ -21,6 +21,7 @@ serde = { version = "1", features = ["derive"] }
 dotenv = "0.15.0"
 futures = "0.3.21"
 env_logger = "0.9.0"
+log = "0.4.17"
 
 [dependencies.sea-orm]
 version = "^0"

@@ -2,15 +2,23 @@ use actix_web::middleware::Logger;
 use actix_web::{get, web, App, Error, HttpResponse, HttpServer};
 use entity::Product;
 use env_logger::Env;
+use log::{debug, error, log_enabled, info, Level};
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 mod init;
 
+
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::builder()
+    .filter_level(log::LevelFilter::Info)
+    .filter_module("sqlx::query", log::LevelFilter::Off)
+    .init();
+
+    info!("Application Started");
+    info!("Setting up database connection");
     let db = init::setup().await.unwrap();
-
-    env_logger::init_from_env(Env::default().default_filter_or("info"));
-
+    
     HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())

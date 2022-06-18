@@ -3,6 +3,7 @@ use anyhow;
 use entity::{Applications, Product};
 
 use futures::future::join_all;
+use log::info;
 use serde::de::DeserializeOwned;
 
 use std::io::{copy, Cursor};
@@ -52,30 +53,29 @@ pub async fn setup() -> anyhow::Result<DatabaseConnection> {
 }
 
 async fn download_zip(dir: &TempDir) -> anyhow::Result<PathBuf> {
+    info!("Downloading file from {}", FDA_URL);
     let response = reqwest::get(FDA_URL).await?;
     // get content disposition header
     let cd = response
         .headers()
         .get(reqwest::header::CONTENT_DISPOSITION)
         .unwrap();
+
     // get filename from content disposition response header
     let file_name = actix_web::http::header::ContentDisposition::from_raw(cd)?
         .get_filename()
         .unwrap()
         .to_string();
-    println!("file to download: '{}'", &file_name);
+    info!("Got filename {} from Content Disposition", file_name);
 
     //merge filename with process temp directory
-    let file_path = dir.path().join(file_name);
-    println!("will be located under: '{:?}'", &file_path);
-
+    let file_path = dir.path().join(&file_name);
     //write binary from HTTP response to file
     let mut file = fs::File::create(&file_path)?;
     let mut content = Cursor::new(response.bytes().await?);
-
+    info!("Saving file to {:?}", &file_path);
     copy(&mut content, &mut file)?;
-
-    println!("Finished writing {:?}", &file_path);
+    info!("File saved sucessfully");
     anyhow::Ok(file_path)
 }
 
@@ -84,6 +84,7 @@ async fn extract_zip(file: PathBuf, dir: &TempDir) -> anyhow::Result<Vec<PathBuf
     let mut files: Vec<PathBuf> = vec![];
 
     // open and parse zip file
+    info!("Attempting to extract {:?}", &file);
     let zip = fs::File::open(file)?;
     let mut archive = zip::ZipArchive::new(zip)?;
 
@@ -97,13 +98,12 @@ async fn extract_zip(file: PathBuf, dir: &TempDir) -> anyhow::Result<Vec<PathBuf
         };
         // join zip filename with temp directory
         let outpath = dir.path().join(file_path);
-        print!("{}", outpath.display());
         if (*file.name()).ends_with('/') {
-            println!("File {} extracted to \"{}\"", i, outpath.display());
+            info!("File {} extracted to \"{}\"", i, outpath.display());
             //create parent directory path if item is a folder
             fs::create_dir_all(&outpath).unwrap();
         } else {
-            println!(
+            info!(
                 "File {} extracted to \"{}\" ({} bytes)",
                 i,
                 outpath.display(),
@@ -131,24 +131,23 @@ where
 {
     let mut results = vec![];
     let schema = Schema::new(DbBackend::Sqlite);
+    info!("Creating Table in memory for {}", entity.as_str());
     let stmt = schema.create_table_from_entity(entity);
     let sql = db.get_database_backend().build(&stmt);
-    println!("{:?}", &sql.sql);
     db.execute(sql).await?;
+    info!("Table creation sucessful for {}", entity.as_str());
 
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b'\t')
         .flexible(true)
-        .from_path(path)?;
-
+        .from_path(&path)?;
+    info!("Starting import of file {:?}", &path);
     for result in rdr.deserialize() {
         let record: Model = result?;
         let active_model: ActiveModel = record.into();
         results.push(Entity::insert(active_model).exec(db));
     }
-
-    let res = join_all(results).await;
-
+    let result = join_all(results).await;
+    info!("Finished importing {} records", { result.len() });
     anyhow::Ok(())
 }
-
