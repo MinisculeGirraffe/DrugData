@@ -4,17 +4,16 @@ use entity::{Applications, Product};
 use env_logger::Env;
 use futures::future::join_all;
 use serde::de::DeserializeOwned;
-use serde::Deserializer;
 
 use std::io::{copy, Cursor};
 
 use std::{fs, path::PathBuf};
 use tempfile::{Builder, TempDir};
 
-use actix_web::{get, web, App, Error, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, Error, HttpResponse, HttpServer};
 use sea_orm::{
-    tests_cfg::*, ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend,
-    DbConn, EntityTrait, ExecResult, ModelTrait, QueryFilter, Schema, Statement,
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DbBackend, DbConn,
+    EntityTrait, ModelTrait, QueryFilter, Schema,
 };
 
 const FDA_URL: &str = "https://www.fda.gov/media/89850/download";
@@ -48,18 +47,20 @@ async fn main() -> anyhow::Result<()> {
             &_ => continue,
         }
     }
+
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    let server = HttpServer::new(move || {
-        App::new()
-            .wrap(Logger::default())
-            .app_data(web::Data::new(conn.clone()))
-            .service(index)
-    })
-    .bind(("127.0.0.1", 8080))?
-    .run()
-    .await;
-    return Ok(());
+    anyhow::Ok(
+        HttpServer::new(move || {
+            App::new()
+                .wrap(Logger::default())
+                .app_data(web::Data::new(conn.clone()))
+                .service(index)
+        })
+        .bind(("127.0.0.1", 8080))?
+        .run()
+        .await?,
+    )
 }
 
 #[get("/drug/{name}")]
@@ -77,7 +78,7 @@ async fn index(
     Ok(HttpResponse::Ok().json(results))
 }
 
-async fn download_zip(dir: &TempDir) -> anyhow::Result<(PathBuf)> {
+async fn download_zip(dir: &TempDir) -> anyhow::Result<PathBuf> {
     let response = reqwest::get(FDA_URL).await?;
     // get content disposition header
     let cd = response
@@ -153,7 +154,7 @@ async fn setup_schema(db: &DbConn) -> anyhow::Result<()> {
     for stmt in statements {
         let sql = db.get_database_backend().build(&stmt);
         println!("{:?}", &sql.sql);
-        let result = db.execute(sql).await?;
+        db.execute(sql).await?;
     }
     anyhow::Ok(())
 }
@@ -169,14 +170,13 @@ where
         .delimiter(b'\t')
         .flexible(true)
         .from_path(path)?;
-    let mut id = 0;
 
     for result in rdr.deserialize() {
         let record: T = result?;
         let active_model: U = record.into();
         results.push(E::insert(active_model).exec(db));
     }
-    
+
     let res = join_all(results).await;
     println!("sucessfully inserted {} rows", res.len());
     anyhow::Ok(())
