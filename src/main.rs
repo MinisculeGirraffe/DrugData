@@ -3,15 +3,17 @@ use actix_web::{get, post, web, App, Error, HttpResponse, HttpServer};
 use dotenv::dotenv;
 use entity::UserToken::UserToken;
 
+use crate::models::auth::Authenticated;
 use entity::{Product, User};
+use lazy_static::lazy_static;
 use log::info;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 use std::env;
-
-use crate::models::auth::Authenticated;
 use uuid::Uuid;
+
+use regex::Regex;
 
 mod constants;
 mod middleware;
@@ -70,11 +72,30 @@ struct SignupRequest {
     password: String,
 }
 
+fn is_password_valid(s: &str) -> bool {
+    let mut has_whitespace = false;
+    let mut has_upper = false;
+    let mut has_lower = false;
+    let mut has_digit = false;
+
+    for c in s.chars() {
+        has_whitespace |= c.is_whitespace();
+        has_lower |= c.is_lowercase();
+        has_upper |= c.is_uppercase();
+        has_digit |= c.is_digit(10);
+    }
+
+    !has_whitespace && has_upper && has_lower && has_digit && s.len() >= 8
+}
+
 #[post("/signup")]
 async fn signup(
     db: web::Data<DatabaseConnection>,
     body: web::Json<SignupRequest>,
 ) -> Result<HttpResponse, Error> {
+    if !is_password_valid(&body.password) {
+        return Ok(HttpResponse::Ok().json("Password does not meet minimum requirements"));
+    }
     let conn = db.as_ref();
     let mut model = User::ActiveModel {
         username: Set(body.username.to_owned()),
