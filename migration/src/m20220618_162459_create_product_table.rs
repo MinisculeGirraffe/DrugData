@@ -1,55 +1,71 @@
-use anyhow;
+use entity::Product::*;
+use sea_orm_migration::prelude::*;
+pub struct Migration;
 
-use entity::{Applications, Product};
+use anyhow;
 
 use futures::future::join_all;
 use log::info;
-use serde::de::DeserializeOwned;
 
 use std::io::{copy, Cursor};
 
 use std::{fs, path::PathBuf};
 use tempfile::{Builder, TempDir};
 
-use sea_orm::{
-    ActiveModelTrait, ConnectionTrait, DatabaseConnection, DbBackend, DbConn, EntityTrait,
-    ModelTrait, Schema,
-};
+use sea_orm::{DbConn, EntityTrait};
 
 const FDA_URL: &str = "https://www.fda.gov/media/89850/download";
 
-pub async fn setup() -> anyhow::Result<DatabaseConnection> {
-    let db_url = "sqlite::memory:";
-    let conn = sea_orm::Database::connect(db_url).await.unwrap();
-    let tmp_dir = Builder::new().prefix("fda").tempdir()?;
-
-    let zip = download_zip(&tmp_dir).await?;
-    let files = extract_zip(zip, &tmp_dir).await?;
-
-    for file in files {
-        let file_name = file.file_name().unwrap().to_str().unwrap();
-
-        match file_name {
-            "Products.txt" => {
-                setup_table::<Product::Model, Product::ActiveModel, Product::Entity>(
-                    file,
-                    &conn,
-                    Product::Entity,
-                )
-                .await?
-            }
-            "Applications.txt" => {
-                setup_table::<Applications::Model, Applications::ActiveModel, Applications::Entity>(
-                    file,
-                    &conn,
-                    Applications::Entity,
-                )
-                .await?
-            }
-            &_ => continue,
-        }
+impl MigrationName for Migration {
+    fn name(&self) -> &str {
+        "m20220618_162459_create_product_table"
     }
-    anyhow::Ok(conn)
+}
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        let db = manager.get_connection();
+        let tmp_dir = Builder::new().prefix("fda").tempdir().unwrap();
+        // create the table
+        manager
+            .create_table(
+                Table::create()
+                    .table(Entity)
+                    .if_not_exists()
+                    .col(ColumnDef::new(Column::ApplNo).string_len(6).not_null())
+                    .col(
+                        ColumnDef::new(Column::ProductNo)
+                            .string_len(6)
+                            .not_null()
+                    )
+                    .col(ColumnDef::new(Column::Form).string())
+                    .col(ColumnDef::new(Column::Strength).string())
+                    .col(ColumnDef::new(Column::ReferenceDrug).integer())
+                    .col(ColumnDef::new(Column::DrugName).string())
+                    .col(ColumnDef::new(Column::ActiveIngredient).string())
+                    .col(ColumnDef::new(Column::ReferenceStandard).integer())
+                    .primary_key(Index::create().col(Column::ApplNo).col(Column::ProductNo))
+                    .to_owned(),
+            )
+            .await?;
+
+        let zip = download_zip(&tmp_dir).await.unwrap();
+        let files = extract_zip(zip, &tmp_dir).await.unwrap();
+        for file in files {
+            match file.file_name().unwrap().to_str().unwrap() {
+                "Products.txt" => load_data(file, db).await.unwrap(),
+                &_ => continue,
+            }
+        }
+        Ok(())
+    }
+
+    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        manager
+            .drop_table(Table::drop().table(Entity).to_owned())
+            .await
+    }
 }
 
 async fn download_zip(dir: &TempDir) -> anyhow::Result<PathBuf> {
@@ -119,24 +135,8 @@ async fn extract_zip(file: PathBuf, dir: &TempDir) -> anyhow::Result<Vec<PathBuf
     anyhow::Ok(files)
 }
 
-async fn setup_table<Model, ActiveModel, Entity>(
-    path: PathBuf,
-    db: &DbConn,
-    entity: Entity,
-) -> anyhow::Result<()>
-where
-    Model: ModelTrait + DeserializeOwned + Into<ActiveModel>,
-    ActiveModel: ActiveModelTrait<Entity = Entity>,
-    Entity: EntityTrait,
-{
+async fn load_data(path: PathBuf, db: &DbConn) -> anyhow::Result<()> {
     let mut results = vec![];
-    let schema = Schema::new(DbBackend::Sqlite);
-    info!("Creating Table in memory for {}", entity.as_str());
-    let stmt = schema.create_table_from_entity(entity);
-    let sql = db.get_database_backend().build(&stmt);
-    db.execute(sql).await?;
-    info!("Table creation sucessful for {}", entity.as_str());
-
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b'\t')
         .flexible(true)
@@ -147,7 +147,9 @@ where
         let active_model: ActiveModel = record.into();
         results.push(Entity::insert(active_model).exec(db));
     }
+
     let result = join_all(results).await;
     info!("Finished importing {} records", { result.len() });
+
     anyhow::Ok(())
 }

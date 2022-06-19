@@ -11,3 +11,7 @@ path = "src/lib.rs"
 [dependencies]
 sea-orm = { version = "^0" }
 serde = { version = "1", features = ["derive"] }
+chrono = "0.4.19"
+rust-argon2 = "1.0"
+rand = "0.8.5"
+jsonwebtoken = "8.1.1"
