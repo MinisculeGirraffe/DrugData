@@ -4,7 +4,7 @@ use dotenv::dotenv;
 use entity::UserToken::UserToken;
 
 use crate::models::auth::Authenticated;
-use entity::{Product, User, session};
+use entity::{session, Product, User};
 use log::info;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
@@ -42,6 +42,7 @@ async fn main() -> std::io::Result<()> {
             .service(signup)
             .service(login)
             .service(logout)
+            .service(get_user)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
@@ -83,7 +84,7 @@ fn is_password_valid(s: &str) -> bool {
         has_digit |= c.is_digit(10);
     }
 
-    !has_whitespace && has_upper && has_lower && has_digit && s.len() >= 8
+    !has_whitespace && has_upper && has_lower && has_digit && s.len() >= 8 && s.len() <= 128
 }
 
 #[post("/signup")]
@@ -153,11 +154,27 @@ async fn login(
     };
 }
 #[get("/logout")]
-async fn logout(user: Authenticated,  db: web::Data<DatabaseConnection>) -> Result<HttpResponse, Error> {
-    match session::Entity::delete_by_id(user.session).exec(db.as_ref()).await {
-        Ok(_) =>   Ok(HttpResponse::Ok().body("")) ,
+async fn logout(
+    user: Authenticated,
+    db: web::Data<DatabaseConnection>,
+) -> Result<HttpResponse, Error> {
+    match session::Entity::delete_by_id(user.session)
+        .exec(db.as_ref())
+        .await
+    {
+        Ok(_) => Ok(HttpResponse::Ok().body("")),
         Err(_) => Ok(HttpResponse::InternalServerError().body("")),
     }
+}
 
- 
+
+#[get("/user/")]
+async fn get_user(
+    user: Authenticated,
+    db: web::Data<DatabaseConnection>,
+) -> Result<HttpResponse, Error> {
+    match User::Entity::find_by_id(user.user).find_with_related(session::Entity).all(db.as_ref()).await {
+        Ok(usr) => Ok(HttpResponse::Ok().json(usr)),
+        Err(_) => Ok(HttpResponse::InternalServerError().body("")),
+    }
 }
