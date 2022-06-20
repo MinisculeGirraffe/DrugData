@@ -1,10 +1,12 @@
+
+
 use chrono::Utc;
 use jsonwebtoken::{EncodingKey, Header};
 use sea_orm::{entity::prelude::*, Set};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-pub static KEY: [u8; 16] = *include_bytes!("../../secret.key");
+
 static ONE_WEEK: i64 = 60 * 60 * 24 * 7; // in seconds
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
@@ -30,10 +32,12 @@ pub enum Relation {
 
 impl fmt::Display for Model {
     fn fmt (&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let string = std::env::var("SECRET_KEY").unwrap();
+        let key = string.as_bytes();
       let token =  jsonwebtoken::encode(
             &Header::default(),
             &self,
-            &EncodingKey::from_secret(&KEY),
+            &EncodingKey::from_secret(&key),
         ).unwrap();
 
         fmt.write_str(&token)?;
@@ -49,6 +53,8 @@ impl Related<super::user::Entity> for Entity {
 
 impl Model {
     pub fn generate(user_id: Uuid, session_id: Uuid) -> String {
+        let string = std::env::var("SECRET_KEY").unwrap();
+        let key = string.as_bytes();
         let now = Utc::now().timestamp_nanos() / 1_000_000_000; // nanosecond -> second
         let payload = Model {
             iat: now,
@@ -59,7 +65,7 @@ impl Model {
         jsonwebtoken::encode(
             &Header::default(),
             &payload,
-            &EncodingKey::from_secret(&KEY),
+            &EncodingKey::from_secret(&key),
         )
         .unwrap()
     }
