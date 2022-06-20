@@ -4,16 +4,13 @@ use dotenv::dotenv;
 use entity::UserToken::UserToken;
 
 use crate::models::auth::Authenticated;
-use entity::{Product, User};
-use lazy_static::lazy_static;
+use entity::{Product, User, session};
 use log::info;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 use std::env;
 use uuid::Uuid;
-
-use regex::Regex;
 
 mod constants;
 mod middleware;
@@ -44,6 +41,7 @@ async fn main() -> std::io::Result<()> {
             .service(index)
             .service(signup)
             .service(login)
+            .service(logout)
     })
     .bind(("127.0.0.1", 8080))?
     .run()
@@ -97,7 +95,7 @@ async fn signup(
         return Ok(HttpResponse::Ok().json("Password does not meet minimum requirements"));
     }
     let conn = db.as_ref();
-    let mut model = User::ActiveModel {
+    let model = User::ActiveModel {
         username: Set(body.username.to_owned()),
         password: Set(body.password.to_owned()),
         ..Default::default()
@@ -116,42 +114,50 @@ async fn signup(
         Err(e) => Ok(HttpResponse::ExpectationFailed().json(e.to_string())),
     }
 }
-
+#[derive(Serialize, Deserialize)]
+struct TokenResponse {
+    token: String,
+}
 #[post("/login")]
 async fn login(
     db: web::Data<DatabaseConnection>,
     body: web::Json<SignupRequest>,
 ) -> Result<HttpResponse, Error> {
     let username = body.username.to_owned();
-    let user_model = User::Entity::find()
+    let db_response = User::Entity::find()
         .filter(User::Column::Username.eq(username.clone()))
         .one(db.as_ref())
-        .await
-        .unwrap()
-        .unwrap();
+        .await;
 
-    let matches = user_model
-        .verify_password(body.password.to_owned())
-        .unwrap();
-    if matches {
-        let session = Uuid::new_v4();
-        user_model
-            .save_login_session(&db, session.to_string())
-            .await
-            .unwrap();
+    match db_response {
+        //no error returned from db
+        Ok(result) => match result {
+            //user returned from db
+            Some(user) => {
+                //if password matches
+                if user.verify_password(body.password.to_owned()).unwrap() {
+                    let token =
+                        UserToken::generate(user.new_login_session(db.as_ref()).await.unwrap());
 
-        //refresh user model from db
-        let user_model = User::Entity::find()
-            .filter(User::Column::Username.eq(username.clone()))
-            .one(db.as_ref())
-            .await
-            .unwrap()
-            .unwrap();
-
-        let token = UserToken::generate(user_model);
-
-        Ok(HttpResponse::Ok().json(token))
-    } else {
-        Ok(HttpResponse::Forbidden().body("Forbidden"))
+                    return Ok(HttpResponse::Ok().json(TokenResponse { token: token }));
+                //incorrect password
+                } else {
+                    return Ok(HttpResponse::Forbidden().body("Forbidden"));
+                }
+            }
+            //no user found in db
+            None => return Ok(HttpResponse::Forbidden().body("Forbidden")),
+        },
+        // database error
+        Err(err) => return Ok(HttpResponse::InternalServerError().body(err.to_string())),
+    };
+}
+#[get("/logout")]
+async fn logout(user: Authenticated,  db: web::Data<DatabaseConnection>) -> Result<HttpResponse, Error> {
+    match session::Entity::delete_by_id(user.session).exec(db.as_ref()).await {
+        Ok(_) =>   Ok(HttpResponse::Ok().body("")) ,
+        Err(_) => Ok(HttpResponse::InternalServerError().body("")),
     }
+
+ 
 }

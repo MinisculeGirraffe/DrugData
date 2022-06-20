@@ -6,26 +6,16 @@ use std::{
 use actix_web::{
     dev::{forward_ready, Service, ServiceRequest, ServiceResponse, Transform},
     http::header::{HeaderName, HeaderValue},
-    http::Method,
-    middleware::ErrorHandlerResponse,
-    web, Error, HttpMessage, HttpResponse, HttpResponseBuilder,
+    web, Error, HttpMessage,
 };
 use entity::UserToken::UserToken;
 
 use futures::{future::LocalBoxFuture, FutureExt};
 use log::info;
-use sea_orm::{Database, DatabaseConnection};
+use sea_orm::DatabaseConnection;
 
-use crate::{constants, models::response::ResponseBody, utils::token_utils};
+use crate::{constants, utils::token_utils};
 
-// There are two steps in middleware processing.
-// 1. Middleware initialization, middleware factory gets called with
-//    next service in chain as parameter.
-// 2. Middleware's call method gets called with normal request.
-
-// Middleware factory is `Transform` trait
-// `S` - type of the next service
-// `B` - type of response's body
 impl<S, B> Transform<S, ServiceRequest> for AuthenticateMiddlewareFactory
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
@@ -89,9 +79,7 @@ where
                             if let Ok(token_val) = &token_data {
                                 info!("Token Parsed");
 
-                                if let Ok(user) =
-                                    token_utils::verify_token(&token_val, db).await
-                                {
+                                if let Ok(user) = token_utils::verify_token(&token_val, db).await {
                                     info!("User Authenticated, Adding context to post");
                                     req.extensions_mut()
                                         .insert::<UserToken>(token_val.claims.clone());

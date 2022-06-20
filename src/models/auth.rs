@@ -1,14 +1,12 @@
 use actix_web::error;
-use actix_web::error::HttpError;
 use actix_web::Error;
 use actix_web::{FromRequest, HttpMessage};
 use entity::UserToken::UserToken;
 use futures::future::{ready, Ready};
-use std::rc::Rc;
 
 use crate::constants;
 
-use super::response::ResponseBody;
+
 pub struct Authenticated(UserToken);
 
 impl FromRequest for Authenticated {

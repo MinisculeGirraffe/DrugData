@@ -2,8 +2,8 @@ use chrono::Utc;
 use jsonwebtoken::{EncodingKey, Header};
 use serde::{Deserialize, Serialize};
 use std::marker::Copy;
-use crate::User;
-
+use crate::{User, session};
+use sea_orm::prelude::Uuid;
 
 pub struct LoginInfoDTO {
     pub username: String,
@@ -19,17 +19,19 @@ pub struct UserToken {
     // expiration
     pub exp: i64,
     // data
-    pub model: User::Model,
+    pub user: Uuid,
+    pub session: Uuid
 
 }
 
 impl UserToken {
-    pub fn generate(model: User::Model) -> String {
+    pub fn generate(model: session::Model) -> String {
         let now = Utc::now().timestamp_nanos() / 1_000_000_000; // nanosecond -> second
         let payload = UserToken {
             iat: now,
             exp: now + ONE_WEEK,
-            model: model.clone()
+            user: model.user_id,
+            session: model.id
         };
         jsonwebtoken::encode(
             &Header::default(),

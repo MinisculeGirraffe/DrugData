@@ -1,10 +1,10 @@
 use argon2;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use rand::Rng;
-use sea_orm::{entity::prelude::*, ActiveValue::NotSet, Set, Unset};
+use sea_orm::{entity::prelude::*, ActiveValue::NotSet, Set};
 use serde::{Deserialize, Serialize};
 
-use crate::UserToken::UserToken;
+use crate::{UserToken::UserToken, session};
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
 #[sea_orm(table_name = "Users")]
 pub struct Model {
@@ -15,11 +15,19 @@ pub struct Model {
     password: String,
     created: ChronoDateTimeUtc,
     updated: ChronoDateTimeUtc,
-    login_session: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+    #[sea_orm(has_many = "super::session::Entity")]
+    Session,
+}
+
+impl Related<super::session::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Session.def()
+    }
+}
 
 impl Model {
     pub fn verify_password(&self, password: String) -> Result<bool, argon2::Error> {
@@ -29,11 +37,10 @@ impl Model {
     pub async fn validate_login_session(
         token: &UserToken,
         db: &DatabaseConnection,
-    ) -> Result<Model, DbErr> {
-        println!("{:?}", token.model);
-        let user = Entity::find()
-            .filter(Column::Username.eq(token.model.username.clone()))
-            .filter(Column::LoginSession.eq(token.model.login_session.clone()))
+    ) -> Result<session::Model, DbErr> {
+        let user = session::Entity::find()
+            .filter(session::Column::Id.eq(token.session.clone()))
+            .filter(session::Column::UserId.eq(token.user.clone()))
             .one(db)
             .await?;
         match user {
@@ -42,21 +49,18 @@ impl Model {
         }
     }
 
-    pub async fn save_login_session(
+    pub async fn new_login_session(
         &self,
         db: &DatabaseConnection,
-        session: String,
-    ) -> Result<(), DbErr> {
-        let mut user: ActiveModel = Entity::find()
-            .filter(Column::Username.eq(self.username.clone()))
-            .one(db)
-            .await?
-            .unwrap()
-            .into();
+    ) -> Result<session::Model, DbErr> {
+        let ses = super::session::ActiveModel {
+            id: Set(sea_orm::prelude::Uuid::new_v4()),
+            user_id: Set(self.id),
+        };
 
-        user.login_session = Set(Some(session));
-        user.save(db).await?;
-        Ok(())
+        Ok(super::session::Entity::insert(ses)
+            .exec_with_returning(db)
+            .await?)
     }
 }
 
