@@ -135,7 +135,6 @@ async fn login(
                 //if password matches
                 if user.verify_password(body.password.to_owned()).unwrap() {
                     let token = user.new_login_session(db.as_ref()).await.unwrap();
-
                     return Ok(HttpResponse::Ok().json(TokenResponse {
                         token: token.to_string(),
                     }));

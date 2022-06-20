@@ -34,11 +34,7 @@ impl MigrationTrait for Migration {
                     .table(Entity)
                     .if_not_exists()
                     .col(ColumnDef::new(Column::ApplNo).string_len(6).not_null())
-                    .col(
-                        ColumnDef::new(Column::ProductNo)
-                            .string_len(6)
-                            .not_null()
-                    )
+                    .col(ColumnDef::new(Column::ProductNo).string_len(6).not_null())
                     .col(ColumnDef::new(Column::Form).string())
                     .col(ColumnDef::new(Column::Strength).string())
                     .col(ColumnDef::new(Column::ReferenceDrug).integer())
@@ -136,7 +132,6 @@ async fn extract_zip(file: PathBuf, dir: &TempDir) -> anyhow::Result<Vec<PathBuf
 }
 
 async fn load_data(path: PathBuf, db: &DbConn) -> anyhow::Result<()> {
-    let mut results = vec![];
     let mut rdr = csv::ReaderBuilder::new()
         .delimiter(b'\t')
         .flexible(true)
@@ -145,11 +140,8 @@ async fn load_data(path: PathBuf, db: &DbConn) -> anyhow::Result<()> {
     for result in rdr.deserialize() {
         let record: Model = result?;
         let active_model: ActiveModel = record.into();
-        results.push(Entity::insert(active_model).exec(db));
+        Entity::insert(active_model).exec(db).await.unwrap();
     }
-
-    let result = join_all(results).await;
-    info!("Finished importing {} records", { result.len() });
 
     anyhow::Ok(())
 }
