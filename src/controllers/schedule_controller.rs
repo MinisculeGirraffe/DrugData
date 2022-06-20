@@ -1,11 +1,11 @@
 use crate::models::auth::Authenticated;
 use crate::utils::validate_cron_expression;
 use actix_web::{error, web, Error, HttpResponse};
-
 use entity::{accounting_entry, schedule};
+use futures::{try_join, TryFutureExt};
 use sea_orm::{
     ActiveModelBehavior, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter, Set, QueryOrder,
+    QueryFilter, QueryOrder, Set,
 };
 use serde::{Deserialize, Serialize};
 pub fn schedule_service(cfg: &mut web::ServiceConfig) {
@@ -21,8 +21,6 @@ pub fn schedule_service(cfg: &mut web::ServiceConfig) {
             .route(web::delete().to(delete_schedule)),
     );
 }
-
-
 
 async fn get_schedules(
     user: Authenticated,
@@ -77,7 +75,7 @@ async fn log_accounting_entry(
 #[derive(Serialize, Deserialize)]
 struct ScheduleDetailResponse {
     schedule: schedule::Model,
-    history: Vec<accounting_entry::Model>
+    history: Vec<accounting_entry::Model>,
 }
 
 async fn get_schedule_by_id(
@@ -85,19 +83,18 @@ async fn get_schedule_by_id(
     db: web::Data<DatabaseConnection>,
     id: web::Path<sea_orm::prelude::Uuid>,
 ) -> Result<HttpResponse, Error> {
-    let result = get_schedule_from_db(&db, id, user.user_id).await?;
-    let query = accounting_entry::Entity::find()
-    .filter(accounting_entry::Column::ScheduleId.eq(result.id.clone()))
-    .order_by_asc(accounting_entry::Column::Timestamp)
-    .all(db.get_ref()).await;
+    let history = accounting_entry::Entity::find()
+        .filter(accounting_entry::Column::ScheduleId.eq(id.clone()))
+        .order_by_asc(accounting_entry::Column::Timestamp)
+        .all(db.get_ref())
+        .map_err(|_| error::ErrorInternalServerError(""));
+    let model = get_schedule_from_db(&db, id, user.user_id);
 
-    match query {
-        Ok(history) =>  Ok(HttpResponse::Ok().json(ScheduleDetailResponse{
-            schedule: result,
-            history: history
-        })),
-        Err(_) => Ok(HttpResponse::InternalServerError().body("")),
-    }
+    let result = try_join!(model, history)?;
+    Ok(HttpResponse::Ok().json(ScheduleDetailResponse {
+        schedule: result.0,
+        history: result.1,
+    }))
 }
 
 #[derive(Serialize, Deserialize)]
