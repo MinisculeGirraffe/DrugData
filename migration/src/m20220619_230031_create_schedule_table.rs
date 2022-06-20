@@ -20,7 +20,18 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Column::AddedAt).date_time().not_null())
                     .col(ColumnDef::new(Column::Cron).string().not_null())
                     .col(ColumnDef::new(Column::DrugName).string().not_null())
-                    .col(ColumnDef::new(Column::PillCount).integer().not_null())
+                    .col(
+                        ColumnDef::new(Column::PillCount)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
+                    .col(
+                        ColumnDef::new(Column::PillAmount)
+                            .integer()
+                            .not_null()
+                            .default(0),
+                    )
                     .primary_key(Index::create().col(Column::Id))
                     .foreign_key(
                         ForeignKeyCreateStatement::new()

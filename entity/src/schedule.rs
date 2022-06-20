@@ -1,16 +1,21 @@
-use sea_orm::entity::prelude::*;
-use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
+use chrono::Utc;
+use cron::Schedule;
+use sea_orm::{entity::prelude::*, Set};
+use serde::{Deserialize, Serialize};
+use super::accounting_entry;
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
 #[sea_orm(table_name = "schedule")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    id: Uuid,
+    pub id: Uuid,
     user_id: Uuid,
     drug_name: String,
     pill_count: i32,
+    pill_amount: i32,
     cron: String,
-    added_at: ChronoDateTimeUtc
+    added_at: ChronoDateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -37,4 +42,23 @@ impl Related<super::accounting_entry::Entity> for Entity {
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {}
+impl ActiveModelBehavior for ActiveModel {
+    fn new() -> Self {
+        Self {
+            id: Set(Uuid::new_v4()),
+            added_at: Set(Utc::now()),
+            ..ActiveModelTrait::default()
+        }
+    }
+    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
+        if !self.cron.is_unchanged() {
+            match Schedule::from_str(self.cron.as_ref()) {
+                Ok(_) => return Ok(self),
+                Err(_) => return Err(DbErr::Type(
+                    "Cron value is not a valid expression".to_string(),
+                )),
+            }
+        };
+        Ok(self)
+    }
+}

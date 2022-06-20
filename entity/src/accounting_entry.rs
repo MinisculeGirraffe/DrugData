@@ -1,5 +1,7 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
+use chrono::Utc;
+use sea_orm::{entity::prelude::*, Set};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
 #[sea_orm(table_name = "accounting")]
@@ -27,4 +29,13 @@ impl Related<super::schedule::Entity> for Entity {
     }
 }
 
-impl ActiveModelBehavior for ActiveModel {}
+impl ActiveModelBehavior for ActiveModel {
+    fn new() -> Self {
+        Self{
+            id: Set(Uuid::new_v4()),
+            timestamp: Set(Utc::now()),
+            ..ActiveModelTrait::default()
+        }
+
+    }
+}

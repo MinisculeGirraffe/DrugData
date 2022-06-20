@@ -2,7 +2,7 @@ use actix_web::web;
 use actix_web::{Error, HttpResponse};
 use entity::{session, User};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
-
+use crate::utils::is_password_valid;
 use serde::{Deserialize, Serialize};
 
 use crate::models::auth::Authenticated;
@@ -18,21 +18,6 @@ struct SignupRequest {
     password: String,
 }
 
-fn is_password_valid(s: &str) -> bool {
-    let mut has_whitespace = false;
-    let mut has_upper = false;
-    let mut has_lower = false;
-    let mut has_digit = false;
-
-    for c in s.chars() {
-        has_whitespace |= c.is_whitespace();
-        has_lower |= c.is_lowercase();
-        has_upper |= c.is_uppercase();
-        has_digit |= c.is_digit(10);
-    }
-
-    !has_whitespace && has_upper && has_lower && has_digit && s.len() >= 8 && s.len() <= 128
-}
 
 async fn signup(
     db: web::Data<DatabaseConnection>,
