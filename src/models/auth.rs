@@ -1,13 +1,13 @@
 use actix_web::error;
 use actix_web::Error;
 use actix_web::{FromRequest, HttpMessage};
-use entity::UserToken::UserToken;
+use entity::session;
 use futures::future::{ready, Ready};
 
 use crate::constants;
 
 
-pub struct Authenticated(UserToken);
+pub struct Authenticated(entity::session::Model);
 
 impl FromRequest for Authenticated {
     type Error = Error;
@@ -15,9 +15,9 @@ impl FromRequest for Authenticated {
 
     fn from_request(
         req: &actix_web::HttpRequest,
-        payload: &mut actix_web::dev::Payload,
+        _payload: &mut actix_web::dev::Payload,
     ) -> Self::Future {
-        let value = req.extensions().get::<UserToken>().cloned();
+        let value = req.extensions().get::<session::Model>().cloned();
         let result = match value {
             Some(v) => Ok(Authenticated(v)),
             None => Err(error::ErrorUnauthorized(constants::MESSAGE_INVALID_TOKEN)),
@@ -26,7 +26,7 @@ impl FromRequest for Authenticated {
     }
 }
 impl std::ops::Deref for Authenticated {
-    type Target = UserToken;
+    type Target = session::Model;
 
     fn deref(&self) -> &Self::Target {
         &self.0

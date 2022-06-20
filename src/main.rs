@@ -1,7 +1,6 @@
 use actix_web::middleware::Logger;
 use actix_web::{get, post, web, App, Error, HttpResponse, HttpServer};
 use dotenv::dotenv;
-use entity::UserToken::UserToken;
 
 use crate::models::auth::Authenticated;
 use entity::{session, Product, User};
@@ -10,7 +9,6 @@ use migration::{Migrator, MigratorTrait};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 use std::env;
-use uuid::Uuid;
 
 mod constants;
 mod middleware;
@@ -29,7 +27,6 @@ async fn main() -> std::io::Result<()> {
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL is not set in .env file");
     let db = sea_orm::Database::connect(&db_url).await.unwrap();
 
-    let domain: String = std::env::var("DOMAIN").unwrap_or_else(|_| "localhost".to_string());
 
     Migrator::up(&db, None).await.unwrap();
 
@@ -137,10 +134,11 @@ async fn login(
             Some(user) => {
                 //if password matches
                 if user.verify_password(body.password.to_owned()).unwrap() {
-                    let token =
-                        UserToken::generate(user.new_login_session(db.as_ref()).await.unwrap());
+                    let token = user.new_login_session(db.as_ref()).await.unwrap();
 
-                    return Ok(HttpResponse::Ok().json(TokenResponse { token: token }));
+                    return Ok(HttpResponse::Ok().json(TokenResponse {
+                        token: token.to_string(),
+                    }));
                 //incorrect password
                 } else {
                     return Ok(HttpResponse::Forbidden().body("Forbidden"));
@@ -158,7 +156,7 @@ async fn logout(
     user: Authenticated,
     db: web::Data<DatabaseConnection>,
 ) -> Result<HttpResponse, Error> {
-    match session::Entity::delete_by_id(user.session)
+    match session::Entity::delete_by_id(user.session_id)
         .exec(db.as_ref())
         .await
     {
@@ -167,13 +165,16 @@ async fn logout(
     }
 }
 
-
 #[get("/user/")]
 async fn get_user(
     user: Authenticated,
     db: web::Data<DatabaseConnection>,
 ) -> Result<HttpResponse, Error> {
-    match User::Entity::find_by_id(user.user).find_with_related(session::Entity).all(db.as_ref()).await {
+    match User::Entity::find_by_id(user.user_id)
+        .find_with_related(session::Entity)
+        .all(db.as_ref())
+        .await
+    {
         Ok(usr) => Ok(HttpResponse::Ok().json(usr)),
         Err(_) => Ok(HttpResponse::InternalServerError().body("")),
     }

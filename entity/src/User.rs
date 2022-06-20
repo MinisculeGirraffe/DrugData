@@ -4,7 +4,8 @@ use rand::Rng;
 use sea_orm::{entity::prelude::*, ActiveValue::NotSet, Set};
 use serde::{Deserialize, Serialize};
 
-use crate::{UserToken::UserToken, session};
+
+use crate::{session};
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
 #[sea_orm(table_name = "Users")]
 pub struct Model {
@@ -35,12 +36,12 @@ impl Model {
     }
 
     pub async fn validate_login_session(
-        token: &UserToken,
+        token: &session::Model,
         db: &DatabaseConnection,
     ) -> Result<session::Model, DbErr> {
         let user = session::Entity::find()
-            .filter(session::Column::Id.eq(token.session.clone()))
-            .filter(session::Column::UserId.eq(token.user.clone()))
+            .filter(session::Column::SessionId.eq(token.session_id.clone()))
+            .filter(session::Column::UserId.eq(token.user_id.clone()))
             .one(db)
             .await?;
         match user {
@@ -53,11 +54,9 @@ impl Model {
         &self,
         db: &DatabaseConnection,
     ) -> Result<session::Model, DbErr> {
-        let ses = super::session::ActiveModel {
-            id: Set(sea_orm::prelude::Uuid::new_v4()),
-            user_id: Set(self.id),
-        };
-
+        
+        let mut ses = super::session::ActiveModel::new();
+        ses.user_id = Set(self.id);
         Ok(super::session::Entity::insert(ses)
             .exec_with_returning(db)
             .await?)

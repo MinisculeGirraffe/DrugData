@@ -8,13 +8,12 @@ use actix_web::{
     http::header::{HeaderName, HeaderValue},
     web, Error, HttpMessage,
 };
-use entity::UserToken::UserToken;
 
+use crate::{constants, utils::token_utils};
+use entity::session;
 use futures::{future::LocalBoxFuture, FutureExt};
 use log::info;
 use sea_orm::DatabaseConnection;
-
-use crate::{constants, utils::token_utils};
 
 impl<S, B> Transform<S, ServiceRequest> for AuthenticateMiddlewareFactory
 where
@@ -56,9 +55,7 @@ where
     fn call(&self, mut req: ServiceRequest) -> Self::Future {
         let srv = self.service.clone();
         async move {
-            let mut authn_pass: bool = false;
-
-            let mut headers = req.headers_mut();
+            let  headers = req.headers_mut();
             headers.append(
                 HeaderName::from_static("content-length"),
                 HeaderValue::from_static("true"),
@@ -79,10 +76,10 @@ where
                             if let Ok(token_val) = &token_data {
                                 info!("Token Parsed");
 
-                                if let Ok(user) = token_utils::verify_token(&token_val, db).await {
+                                if let Ok(_) = token_utils::verify_token(&token_val, db).await {
                                     info!("User Authenticated, Adding context to post");
                                     req.extensions_mut()
-                                        .insert::<UserToken>(token_val.claims.clone());
+                                        .insert::<session::Model>(token_val.claims.clone());
                                 } else {
                                     info!("Token not valid");
                                 }
