@@ -5,15 +5,15 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "Products")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    ProductNo: String,
+    product_no: String,
     #[sea_orm(primary_key)]
-    ApplNo: String,
-    Form: Option<String>,
-    Strength: Option<String>,
-    ReferenceDrug: Option<i32>,
-    DrugName: Option<String>,
-    ActiveIngredient: Option<String>,
-    ReferenceStandard: Option<i32>,
+    appl_no: String,
+    form: Option<String>,
+    strength: Option<String>,
+    reference_drug: Option<i32>,
+    drug_name: Option<String>,
+    active_ingredient: Option<String>,
+    reference_standard: Option<i32>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

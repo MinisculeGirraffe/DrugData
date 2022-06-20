@@ -37,8 +37,8 @@ impl MigrationTrait for Migration {
                         ForeignKeyCreateStatement::new()
                             .from_tbl(Entity)
                             .from_col(Column::UserId)
-                            .to_tbl(entity::User::Entity)
-                            .to_col(entity::User::Column::Id),
+                            .to_tbl(entity::user::Entity)
+                            .to_col(entity::user::Column::Id),
                     )
                     .to_owned(),
             )

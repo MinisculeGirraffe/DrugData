@@ -1,13 +1,9 @@
 use actix_web::middleware::Logger;
-use actix_web::{get, post, web, App, Error, HttpResponse, HttpServer};
+use actix_web::{ web, App, HttpServer};
 use dotenv::dotenv;
 
-use crate::models::auth::Authenticated;
-use entity::{session, Product, User};
 use log::info;
 use migration::{Migrator, MigratorTrait};
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
-use serde::{Deserialize, Serialize};
 use std::env;
 
 use crate::controllers::config_app;
@@ -38,7 +34,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(db.clone()))
             .configure(config_app)
     })
-    .bind(("127.0.0.1", 8080))?
+    .bind(("::", 8080))?
     .run()
     .await
 }

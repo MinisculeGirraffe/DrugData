@@ -4,7 +4,7 @@ use chrono::Utc;
 use cron::Schedule;
 use sea_orm::{entity::prelude::*, Set};
 use serde::{Deserialize, Serialize};
-use super::accounting_entry;
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
 #[sea_orm(table_name = "schedule")]
 pub struct Model {
@@ -21,16 +21,16 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(
-        belongs_to = "super::User::Entity",
+        belongs_to = "super::user::Entity",
         from = "Column::UserId",
-        to = "super::User::Column::Id"
+        to = "super::user::Column::Id"
     )]
     User,
     #[sea_orm(has_many = "super::accounting_entry::Entity")]
     AccountingEntry,
 }
 
-impl Related<super::User::Entity> for Entity {
+impl Related<super::user::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::User.def()
     }
@@ -50,7 +50,7 @@ impl ActiveModelBehavior for ActiveModel {
             ..ActiveModelTrait::default()
         }
     }
-    fn before_save(self, insert: bool) -> Result<Self, DbErr> {
+    fn before_save(self, _insert: bool) -> Result<Self, DbErr> {
         if !self.cron.is_unchanged() {
             match Schedule::from_str(self.cron.as_ref()) {
                 Ok(_) => return Ok(self),

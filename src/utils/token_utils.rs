@@ -16,5 +16,5 @@ pub async fn verify_token(
     token_data: &TokenData<Model>,
     db: &web::Data<DatabaseConnection>,
 ) -> Result<Model, DbErr> {
-    entity::User::Model::validate_login_session(&token_data.claims, &db.get_ref()).await
+    entity::user::Model::validate_login_session(&token_data.claims, &db.get_ref()).await
 }

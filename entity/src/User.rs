@@ -80,7 +80,7 @@ impl ActiveModelBehavior for ActiveModel {
             ..ActiveModelTrait::default()
         }
     }
-    fn before_save(mut self, insert: bool) -> Result<Self, DbErr> {
+    fn before_save(mut self, _insert: bool) -> Result<Self, DbErr> {
         println!("Before Save");
         let timestamp = Utc::now();
         if self.id.is_not_set() {

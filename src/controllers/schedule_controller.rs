@@ -40,11 +40,11 @@ async fn get_schedules(
 async fn get_schedule_from_db(
     db: &web::Data<DatabaseConnection>,
     id: web::Path<sea_orm::prelude::Uuid>,
-    userId: sea_orm::prelude::Uuid,
+    user_id: sea_orm::prelude::Uuid,
 ) -> Result<schedule::Model, Error> {
     let query = schedule::Entity::find()
         .filter(schedule::Column::Id.eq(id.clone()))
-        .filter(schedule::Column::UserId.eq(userId))
+        .filter(schedule::Column::UserId.eq(user_id))
         .one(db.get_ref())
         .await;
 

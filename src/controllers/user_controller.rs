@@ -1,6 +1,6 @@
 use crate::models::auth::Authenticated;
 use actix_web::{web, Error, HttpResponse};
-use entity::{session, User};
+use entity::{session, user};
 use sea_orm::{DatabaseConnection, EntityTrait};
 use serde::{Deserialize, Serialize};
 
@@ -10,11 +10,11 @@ pub fn user_service(cfg: &mut web::ServiceConfig) {
 
 #[derive(Serialize, Deserialize)]
 struct UserResponse {
-    user: User::Model,
+    user: user::Model,
     sessions: Vec<session::Model>,
 }
 impl UserResponse {
-    fn new(query: Vec<(User::Model, Vec<session::Model>)>) -> UserResponse {
+    fn new(query: Vec<(user::Model, Vec<session::Model>)>) -> UserResponse {
         let result = query.get(0).unwrap();
         UserResponse {
             user: result.0.clone(),
@@ -27,7 +27,7 @@ async fn get_user(
     user: Authenticated,
     db: web::Data<DatabaseConnection>,
 ) -> Result<HttpResponse, Error> {
-    let query = User::Entity::find_by_id(user.user_id)
+    let query = user::Entity::find_by_id(user.user_id)
         .find_with_related(session::Entity)
         .all(db.as_ref())
         .await;

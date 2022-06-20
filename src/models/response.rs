@@ -7,7 +7,7 @@ pub struct ResponseBody<T> {
 }
 
 impl<T> ResponseBody<T> {
-    pub fn new(message: &str, data: T) -> ResponseBody<T> {
+    pub fn _new(message: &str, data: T) -> ResponseBody<T> {
         ResponseBody {
             message: message.to_string(),
             data,
@@ -25,7 +25,7 @@ pub struct Page<T> {
 }
 
 impl<T> Page<T> {
-    pub fn new(
+    pub fn _new(
         message: &str,
         data: Vec<T>,
         page_num: i64,

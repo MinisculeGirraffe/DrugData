@@ -1,4 +1,4 @@
-use entity::User::*;
+use entity::user::*;
 use sea_orm_migration::prelude::*;
 pub struct Migration;
 

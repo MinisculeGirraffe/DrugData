@@ -1,10 +1,9 @@
-use entity::Product::*;
+use entity::product::*;
 use sea_orm_migration::prelude::*;
 pub struct Migration;
 
 use anyhow;
 
-use futures::future::join_all;
 use log::info;
 
 use std::io::{copy, Cursor};

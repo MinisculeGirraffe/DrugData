@@ -1,6 +1,6 @@
 use actix_web::web;
 use actix_web::{Error, HttpResponse};
-use entity::{session, User};
+use entity::{session, user};
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use crate::utils::is_password_valid;
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ async fn signup(
         return Ok(HttpResponse::Ok().json("Password does not meet minimum requirements"));
     }
     let conn = db.as_ref();
-    let model = User::ActiveModel {
+    let model = user::ActiveModel {
         username: Set(body.username.to_owned()),
         password: Set(body.password.to_owned()),
         ..Default::default()
@@ -37,7 +37,7 @@ async fn signup(
 
     match result {
         Ok(r) => {
-            let user = User::Entity::find_by_id(*r.id.as_ref())
+            let user = user::Entity::find_by_id(*r.id.as_ref())
                 .one(conn)
                 .await
                 .unwrap();
@@ -56,8 +56,8 @@ async fn login(
     body: web::Json<SignupRequest>,
 ) -> Result<HttpResponse, Error> {
     let username = body.username.to_owned();
-    let db_response = User::Entity::find()
-        .filter(User::Column::Username.eq(username.clone()))
+    let db_response = user::Entity::find()
+        .filter(user::Column::Username.eq(username.clone()))
         .one(db.as_ref())
         .await;
 
