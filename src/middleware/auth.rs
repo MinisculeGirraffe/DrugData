@@ -62,7 +62,6 @@ where
             );
 
             if let Some(db) = req.app_data::<web::Data<DatabaseConnection>>() {
-                info!("Attempting to connect to db to validate request");
                 if let Some(authen_header) = req.headers().get(constants::AUTHORIZATION) {
                     info!("Parsing authorization header...");
                     if let Ok(authen_str) = authen_header.to_str() {
