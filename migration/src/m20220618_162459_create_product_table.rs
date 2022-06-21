@@ -65,7 +65,13 @@ impl MigrationTrait for Migration {
 
 async fn download_zip(dir: &TempDir) -> anyhow::Result<PathBuf> {
     info!("Downloading file from {}", FDA_URL);
-    let response = reqwest::get(FDA_URL).await?;
+    let response = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap()
+        .get(FDA_URL)
+        .send()
+        .await?;
     // get content disposition header
     let cd = response
         .headers()
@@ -137,7 +143,7 @@ async fn load_data(path: PathBuf, db: &DbConn) -> anyhow::Result<()> {
         .from_path(&path)?;
     info!("Starting import of file {:?}", &path);
     for result in rdr.deserialize() {
-        info!("{:?}",result);
+        info!("{:?}", result);
         let record: Model = result?;
         let active_model: ActiveModel = record.into();
         Entity::insert(active_model).exec(db).await.unwrap();
