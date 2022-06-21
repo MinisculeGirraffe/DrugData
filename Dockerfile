@@ -6,9 +6,6 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/src/drug-data/target \ 
     cargo build --release
 
-RUN cargo install --path .
-
-
 # Runtime image
 FROM debian:bullseye-slim
 
@@ -19,4 +16,4 @@ USER app
 WORKDIR /app
 
 # Get compiled binaries from builder's cargo install directory
-COPY --from=builder /usr/local/cargo/bin/drug_data /app/drug_data
+COPY --from=builder /usr/src/drug-data/target/release/drug_data /app/drug_data
