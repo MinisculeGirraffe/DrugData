@@ -17,8 +17,8 @@ impl MigrationTrait for Migration {
                     .table(Entity)
                     .col(ColumnDef::new(Column::SessionId).uuid().not_null())
                     .col(ColumnDef::new(Column::UserId).uuid().not_null())
-                    .col(ColumnDef::new(Column::Iat).integer().not_null())
-                    .col(ColumnDef::new(Column::Exp).integer().not_null())
+                    .col(ColumnDef::new(Column::Iat).big_integer().not_null())
+                    .col(ColumnDef::new(Column::Exp).big_integer().not_null())
                     .primary_key(Index::create().col(Column::SessionId))
                     .foreign_key(
                         ForeignKeyCreateStatement::new()

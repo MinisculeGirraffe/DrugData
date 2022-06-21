@@ -1,9 +1,9 @@
 use std::str::FromStr;
 
-use chrono::Utc;
 use cron::Schedule;
 use sea_orm::{entity::prelude::*, Set};
 use serde::{Deserialize, Serialize};
+use chrono::{Utc,DateTime};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
 #[sea_orm(table_name = "schedule")]
@@ -15,7 +15,7 @@ pub struct Model {
     pill_count: i32,
     pill_amount: i32,
     cron: String,
-    added_at: ChronoDateTimeUtc,
+    added_at: DateTime<Utc>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

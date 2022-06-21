@@ -137,6 +137,7 @@ async fn load_data(path: PathBuf, db: &DbConn) -> anyhow::Result<()> {
         .from_path(&path)?;
     info!("Starting import of file {:?}", &path);
     for result in rdr.deserialize() {
+        info!("{:?}",result);
         let record: Model = result?;
         let active_model: ActiveModel = record.into();
         Entity::insert(active_model).exec(db).await.unwrap();

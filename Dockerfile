@@ -2,7 +2,9 @@ FROM rust:latest as builder
 WORKDIR /usr/src/drug-data
 COPY . .
 
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/src/drug-data/target \ 
+    cargo build --release
 
 RUN cargo install --path .
 

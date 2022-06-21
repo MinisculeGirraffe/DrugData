@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use chrono::Utc;
+use chrono::{Utc,DateTime};
 use sea_orm::Set;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Deserialize, Serialize)]
@@ -10,7 +10,7 @@ pub struct Model {
     id: Uuid,
     schedule_id: Uuid,
     amount: i32,
-    timestamp: ChronoDateTimeUtc,
+    timestamp:DateTime<Utc>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

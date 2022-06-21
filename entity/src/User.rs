@@ -1,5 +1,5 @@
 use argon2;
-use chrono::Utc;
+use chrono::{Utc,DateTime};
 use rand::Rng;
 use sea_orm::{entity::prelude::*, ActiveValue::NotSet, Set};
 use serde::{Deserialize, Serialize};
@@ -14,8 +14,8 @@ pub struct Model {
     username: String,
     #[serde(skip_serializing, skip_deserializing)]
     password: String,
-    created: ChronoDateTimeUtc,
-    updated: ChronoDateTimeUtc,
+    created: DateTime<Utc>,
+    updated: DateTime<Utc>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

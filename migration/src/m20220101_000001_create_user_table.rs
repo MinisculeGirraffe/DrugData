@@ -24,8 +24,8 @@ impl MigrationTrait for Migration {
                             .unique_key(),
                     )
                     .col(ColumnDef::new(Column::Password).string().not_null())
-                    .col(ColumnDef::new(Column::Created).date_time().not_null())
-                    .col(ColumnDef::new(Column::Updated).date_time().not_null())
+                    .col(ColumnDef::new(Column::Created).timestamp_with_time_zone().not_null())
+                    .col(ColumnDef::new(Column::Updated).timestamp_with_time_zone().not_null())
                     .primary_key(Index::create().col(Column::Id))
                     .to_owned(),
             )

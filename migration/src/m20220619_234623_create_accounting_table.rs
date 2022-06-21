@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Column::Id).uuid().not_null())
                     .col(ColumnDef::new(Column::ScheduleId).uuid().not_null())
                     .col(ColumnDef::new(Column::Amount).integer().not_null())
-                    .col(ColumnDef::new(Column::Timestamp).date_time().not_null())
+                    .col(ColumnDef::new(Column::Timestamp).timestamp_with_time_zone().not_null())
                     .primary_key(Index::create().col(Column::Id))
                     .foreign_key(
                         ForeignKeyCreateStatement::new()

@@ -17,7 +17,7 @@ impl MigrationTrait for Migration {
                     .table(Entity)
                     .col(ColumnDef::new(Column::Id).uuid().not_null())
                     .col(ColumnDef::new(Column::UserId).uuid().not_null())
-                    .col(ColumnDef::new(Column::AddedAt).date_time().not_null())
+                    .col(ColumnDef::new(Column::AddedAt).timestamp_with_time_zone().not_null())
                     .col(ColumnDef::new(Column::Cron).string().not_null())
                     .col(ColumnDef::new(Column::DrugName).string().not_null())
                     .col(
